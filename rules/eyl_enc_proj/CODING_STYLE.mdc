@@ -1,0 +1,119 @@
+---
+description: EYL ENC C 코딩 스타일 (mcr_ 네이밍, 블록 주석)
+globs: **/*.c, **/*.h, **/Makefile
+alwaysApply: false
+---
+
+# EYL ENC 코딩 스타일
+
+## 기본
+
+- 들여쓰기는 탭, 중괄호는 K&R 스타일.
+- **새로 만드는 함수/타입/매크로는 `mcr_` 접두사** (예: `mcr_sendPayload`, `mcr_crypto_t`).
+- 성공 `0`, 실패 `-1`. 로그는 `[tag]` 접두사 사용.
+- 새 로직 추가 전 grep으로 유사 코드 확인. 요청 범위만 수정.
+
+## 함수 주석 (모든 함수 필수)
+
+```c
+/**
+ *	NAME	: mcr_sendPayload
+ * ----------------------------------------------------------------------------
+ *	RANGE	: public
+ *	PARAM
+ *			@param sock : [in] 연결된 소켓 fd
+ *			@param data : [in] 전송할 payload
+ *			@param len : [in] payload 길이
+ *			@return : 0 - 성공, -1 - 실패
+ *	NOTE
+ *			와이어 포맷: [uint32_be len][payload]
+ */
+```
+
+- RANGE: `public` (.h 선언), `private` (static)
+- PARAM: 인자마다 한 줄, `[in]` / `[out]` / `[in,out]` 방향 표기
+- NOTE: wire format, 암호화, 버퍼 제한 등 **명확하지 않을 때만**
+
+## 함수 내부 주석 (주요 로직 단계)
+
+함수 안에서 **의미 있는 단계마다** 바로 위에 주석을 단다.
+
+| 상황 | 형식 |
+|------|------|
+| 한 줄로 충분 | `/* 설명 */` 또는 `// 설명` |
+| 여러 줄 필요 | `/*` … `*/` 블록 (아래 예시) |
+
+### 한 줄 주석
+
+```c
+	/* 대상 서버 TCP 연결 */
+	if (mcr_senderConnect(host, port, &sock) != 0)
+		return -1;
+```
+
+### 여러 줄 주석
+
+설명이 길거나, TODO·제약·조건이 여러 개일 때 `/* */` 블록을 사용한다.
+
+```c
+	/*
+	 * payload 길이 검증
+	 * - 0 또는 MCR_MAX_PAYLOAD 초과 시 거부
+	 * - buf cap보다 큰 경우 거부 (버퍼 오버플로 방지)
+	 */
+	if (payload_len == 0 || payload_len > MCR_MAX_PAYLOAD ||
+	    payload_len > cap)
+		return -1;
+
+	/*
+	 * 임시 IP 설정
+	 * mcr todo: br0 IP가 없으면 초기화 실패, 추후 개선 필요
+	 */
+	mcr_setBridgeIPIfNeeded("br0", "169.254.0.1");
+```
+
+### 전체 예시
+
+```c
+int mcr_senderRun(const char *payload, const char *host, int port)
+{
+	size_t payload_len;
+	int sock;
+
+	payload_len = strlen(payload);
+	printf("[sender] payload: %s\n", payload);
+
+	/* 대상 서버 TCP 연결 */
+	if (mcr_senderConnect(host, port, &sock) != 0)
+		return -1;
+
+	/*
+	 * payload 전송
+	 * 와이어 포맷: [uint32_be len][payload bytes]
+	 */
+	if (mcr_sendPayload(sock, (const unsigned char *)payload,
+			    payload_len) != 0) {
+		fprintf(stderr, "[sender] send failed\n");
+		close(sock);
+		return -1;
+	}
+
+	printf("[sender] sent %zu bytes to %s:%d\n", payload_len, host, port);
+	close(sock);
+	return 0;
+}
+```
+
+- 분기/반복/초기화/정리 등 **단계가 바뀔 때** 주석 추가
+- skip 조건, TODO, 알려진 제약은 **여러 줄 블록**으로 남김
+- 자명한 코드(`i = 0`, `close(sock)`)에는 주석 달지 않음
+
+## 적용 범위
+
+- `test/`에서 **코드 작성·수정 시** 적용.
+- `sample/` 및 외부 `eyl_*` API 이름은 참조용 — 리네임하지 않음.
+
+## 다른 rule / 문서
+
+- 코드 **완료 후** call flow → `CALL_FLOW` rule / `docs/CALL_FLOW.md`
+- 코딩 스타일 (사람이 읽는 문서) → `docs/CODING_STYLE.md`
