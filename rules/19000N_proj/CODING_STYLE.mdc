@@ -1,0 +1,94 @@
+---
+description: 19000N C 코딩 스타일 (MCR 패치, mcr_ 네이밍, [MCR] 로그)
+globs: **/*.c, **/*.h, **/Makefile, **/*.mk
+alwaysApply: false
+---
+
+# 19000N 코딩 스타일
+
+상세·예시 → `docs/CODING_STYLE.md`
+
+## MCR 패치 (SDK 수정 시 필수)
+
+원본 삭제 금지. 매크로로 감싼다.
+
+| 영역 | 매크로 | `#endif` |
+|------|--------|----------|
+| Linux kernel | `CONFIG_MCR_PLATFORM` | `#endif // CONFIG_MCR_PLATFORM` |
+| WiFi driver | `MCR_WIRELESS_EXTEND` | `#endif // MCR_WIRELESS_EXTEND` |
+
+```c
+#if defined(MCR_WIRELESS_EXTEND)
+	/* 2026.08.08 - 한글 한 줄: 수정 이유 */
+	/* MCR 코드 */
+#else // MCR_WIRELESS_EXTEND
+	/* 원본 그대로 */
+#endif // MCR_WIRELESS_EXTEND
+```
+
+```c
+#ifdef CONFIG_MCR_PLATFORM
+	/* MCR 추가 (boot 경로는 원본 유지) */
+#endif // CONFIG_MCR_PLATFORM
+```
+
+- `#if defined(MCR_WIRELESS_EXTEND)` 사용 (`#ifdef` 지양)
+- MCR-only 추가: `#if` ~ `#endif` 만 (else 없음)
+- `#if !defined(MCR_WIRELESS_EXTEND)` 로 순서 뒤바꾸지 않음
+- kernel **내부** static 등 신규 → `mcr_` / SDK kallsyms export → 기존 `mtk_*` 유지, driver 무변경
+- MCR 진단 로그: `MTWF_PRINT` / `dev_info` / `pr_warn`, **`[MCR]`** tag, debug level 무관
+
+## 기본
+
+- 탭 + K&R 중괄호
+- 신규 함수/타입/매크로 → `mcr_` (SDK 심볼 rename 금지)
+- 성공 `0`, 실패 `-1`
+- grep 후 요청 범위만 수정
+
+## 주석
+
+### 함수 블록 주석 (모든 함수 필수)
+
+신규 `mcr_` 코드 및 MCR로 추가하는 함수에 적용.
+
+```c
+/**
+ *	NAME	: mcr_sendPayload
+ * ----------------------------------------------------------------------------
+ *	RANGE	: public
+ *	PARAM
+ *			@param sock : [in] 연결 fd
+ *			@param len  : [in] payload 길이
+ *			@return : 0 - 성공, -1 - 실패
+ *	NOTE
+ *			와이어 포맷 등 불명확할 때만
+ */
+```
+
+- RANGE: `public` (.h), `private` (static)
+- PARAM: 인자마다 한 줄, `[in]` / `[out]` / `[in,out]`
+- NOTE: wire format, 버퍼 제한 등 **불명확할 때만**
+
+### 함수 내부 주석
+
+의미 있는 **단계마다** 바로 위에 작성.
+
+| 상황 | 형식 |
+|------|------|
+| 한 줄 | `/* 설명 */` |
+| 여러 줄·TODO·제약 | `/*` … `*/` 블록 |
+
+```c
+	/* PCIe config save 후 whole chip reset */
+	if (!mtk_trigger_whole_chip_reset(chip_id))
+		return -1;
+```
+
+- 분기/반복/초기화/정리 등 **단계가 바뀔 때** 추가
+- `i = 0`, `close(sock)` 등 **자명한 코드**에는 주석 생략
+
+## 적용 범위
+
+- MTK SDK (`linux-mediatek_mt7988/`, `mt_wifi7/`) → MCR 패치 필수
+- 완료 후 call flow → `CALL_FLOW.mdc` / `docs/CALL_FLOW.md`
+- overlay copy / 빌드 → skill `mcr-platform` / `docs/BUILD_GUIDE.md`

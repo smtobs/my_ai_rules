@@ -10,15 +10,38 @@ GitHub: https://github.com/smtobs/my_ai_rules
 my_ai_rules/
 ├── install.sh
 ├── rules/
-│   └── eyl_enc_proj/          ← 프로젝트별 rule pack
-│       ├── CODING_STYLE.mdc       (코딩 스타일)
-│       └── CALL_FLOW.mdc          (flow 문서 작성)
+│   ├── eyl_enc_proj/          ← 프로젝트별 rule pack
+│   │   ├── CODING_STYLE.mdc
+│   │   └── CALL_FLOW.mdc
+│   └── 19000N_proj/           ← MT7988 MCR
+│       ├── CODING_STYLE.mdc
+│       └── CALL_FLOW.mdc
+├── skills/
+│   └── mcr-platform/          ← 19000N apply/빌드 workflow
+│       └── SKILL.md
 └── docs/
-    ├── CODING_STYLE.md        ← Obsidian용
-    └── CALL_FLOW.template.md
+    ├── CODING_STYLE.md        ← eyl_enc Obsidian용
+    ├── CALL_FLOW.template.md
+    └── 19000N_proj/           ← 19000N Obsidian용
+        ├── CODING_STYLE.md
+        ├── BUILD_GUIDE.md
+        ├── APPLY_MCR_PLATFORM_SYNC.md
+        └── CALL_FLOW.md
 ```
 
 rule 파일명 = docs 파일명과 동일 (`.md` ↔ `.mdc`)
+
+---
+
+## Rules (19000N_proj)
+
+| 종류 | 파일 | 용도 |
+|------|------|------|
+| rule | `CODING_STYLE.mdc` | MCR 패치 코딩 스타일 |
+| rule | `CALL_FLOW.mdc` | call flow 문서 |
+| skill | `skills/mcr-platform/SKILL.md` | overlay copy + OpenWrt 빌드 |
+
+docs: `docs/19000N_proj/` (BUILD_GUIDE, APPLY_MCR_PLATFORM_SYNC 포함)
 
 ---
 
